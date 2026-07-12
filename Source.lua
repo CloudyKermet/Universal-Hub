@@ -17,11 +17,28 @@ Tab1:Select()
 local MasterToggle = false
 local SkeletonToggle = false
 local NameToggle = false
+local flying = false
+local flySpeed = 60
+local noclipEnabled = false
+local noclipConnection = nil
+local infiniteJumpEnabled = false
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local HRP = character:WaitForChild("HumanoidRootPart")
+
+local bodyVelocity = Instance.new("BodyVelocity")
+bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+
+local bodyGyro = Instance.new("BodyGyro")
+bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+
+local infiniteJumpConnection = nil
 
 local NameCache = {}
 
@@ -46,18 +63,18 @@ local function updateNameESP(player)
         return
     end
 
-    local character = player.Character
-    if not character then
+    local char = player.Character
+    if not char then
         if NameCache[player] then
             NameCache[player].Visible = false
         end
         return
     end
 
-    local head = character:FindFirstChild("Head")
-    local humanoid = character:FindFirstChild("Humanoid")
+    local head = char:FindFirstChild("Head")
+    local hum = char:FindFirstChild("Humanoid")
     
-    if not head or not humanoid or humanoid.Health <= 0 then
+    if not head or not hum or hum.Health <= 0 then
         if NameCache[player] then
             NameCache[player].Visible = false
         end
@@ -80,21 +97,8 @@ local function updateNameESP(player)
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        updateNameESP(player)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    if NameCache[plr] then
-        NameCache[plr]:Remove()
-        NameCache[plr] = nil
-    end
-end)
-
 local Settings = {
-    Color = Color3.fromRGB(0, 255, 100),
+    Color = Color3.new(1, 1, 1),
     Thickness = 2,
     Transparency = 1,
 }
@@ -123,16 +127,16 @@ local function updateSkeleton(player)
         return 
     end
 
-    local character = player.Character
-    if not character then
+    local char = player.Character
+    if not char then
         if SkeletonCache[player] then
             for _, line in ipairs(SkeletonCache[player]) do line.Visible = false end
         end
         return
     end
 
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum or hum.Health <= 0 then
         if SkeletonCache[player] then
             for _, line in ipairs(SkeletonCache[player]) do line.Visible = false end
         end
@@ -160,26 +164,26 @@ local function updateSkeleton(player)
         index = index + 1
     end
 
-    local head   = character:FindFirstChild("Head")
-    local utorso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
-    local ltorso = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
-    local hrp    = character:FindFirstChild("HumanoidRootPart")
+    local head   = char:FindFirstChild("Head")
+    local utorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local ltorso = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
+    local hrp    = char:FindFirstChild("HumanoidRootPart")
 
-    local lua = character:FindFirstChild("LeftUpperArm") or character:FindFirstChild("Left Arm")
-    local lla = character:FindFirstChild("LeftLowerArm") or character:FindFirstChild("Left Arm")
-    local lhand = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+    local lua = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")
+    local lla = char:FindFirstChild("LeftLowerArm") or char:FindFirstChild("Left Arm")
+    local lhand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
 
-    local rua = character:FindFirstChild("RightUpperArm") or character:FindFirstChild("Right Arm")
-    local rla = character:FindFirstChild("RightLowerArm") or character:FindFirstChild("Right Arm")
-    local rhand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+    local rua = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")
+    local rla = char:FindFirstChild("RightLowerArm") or char:FindFirstChild("Right Arm")
+    local rhand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 
-    local lul = character:FindFirstChild("LeftUpperLeg") or character:FindFirstChild("Left Leg")
-    local lll = character:FindFirstChild("LeftLowerLeg") or character:FindFirstChild("Left Leg")
-    local lfoot = character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg")
+    local lul = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg")
+    local lll = char:FindFirstChild("LeftLowerLeg") or char:FindFirstChild("Left Leg")
+    local lfoot = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
 
-    local rul = character:FindFirstChild("RightUpperLeg") or character:FindFirstChild("Right Leg")
-    local rll = character:FindFirstChild("RightLowerLeg") or character:FindFirstChild("Right Leg")
-    local rfoot = character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg")
+    local rul = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg")
+    local rll = char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("Right Leg")
+    local rfoot = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
 
     connect(head, utorso)
     connect(utorso, ltorso)
@@ -198,11 +202,16 @@ end
 
 RunService.RenderStepped:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
+        updateNameESP(player)
         updateSkeleton(player)
     end
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
+    if NameCache[plr] then
+        NameCache[plr]:Remove()
+        NameCache[plr] = nil
+    end
     if SkeletonCache[plr] then
         for _, line in ipairs(SkeletonCache[plr]) do
             line:Remove()
@@ -211,12 +220,100 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
+local function startFlying()
+    flying = true
+    bodyVelocity.Parent = HRP
+    bodyGyro.Parent = HRP
+    humanoid.PlatformStand = true
+end
+
+local function stopFlying()
+    flying = false
+    bodyVelocity.Parent = nil
+    bodyGyro.Parent = nil
+    humanoid.PlatformStand = false
+end
+
+local function enableNoclip()
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    noclipEnabled = true
+    noclipConnection = RunService.Stepped:Connect(function()
+        if not noclipEnabled then return end
+        if LocalPlayer.Character then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanCollide then
+                    v.CanCollide = false
+                end
+            end
+        end
+    end)
+end
+
+local function disableNoclip()
+    noclipEnabled = false
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+end
+
+local function enableInfiniteJump()
+    infiniteJumpEnabled = true
+    if not infiniteJumpConnection then
+        infiniteJumpConnection = UIS.JumpRequest:Connect(function()
+            if infiniteJumpEnabled and LocalPlayer.Character then
+                local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:ChangeState("Jumping")
+                end
+            end
+        end)
+    end
+end
+
+local function disableInfiniteJump()
+    infiniteJumpEnabled = false
+end
+
 local wse = false
 local ws = 16
 
-RunService.RenderStepped:Connect(function(dt)
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        updateNameESP(player)
+        updateSkeleton(player)
+    end
     if wse and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = ws
+    end
+    if not flying then return end
+    local moveDirection = Vector3.new(0, 0, 0)
+    local camCF = Camera.CFrame
+    local localMove = camCF:VectorToObjectSpace(humanoid.MoveDirection)
+    moveDirection = moveDirection + (camCF.LookVector * -localMove.Z)
+    moveDirection = moveDirection + (camCF.RightVector * localMove.X)
+    if UIS:IsKeyDown(Enum.KeyCode.Space) or UIS:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonR2) then
+        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+    end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.C) or UIS:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonL2) then
+        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+    end
+    if moveDirection.Magnitude > 0 then
+        moveDirection = moveDirection.Unit
+    end
+    bodyVelocity.Velocity = moveDirection * flySpeed
+    bodyGyro.CFrame = camCF
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = newChar:WaitForChild("Humanoid")
+    HRP = newChar:WaitForChild("HumanoidRootPart")
+    if flying then
+        flying = false
     end
 end)
 
@@ -239,6 +336,54 @@ local Slider1 = Tab1:Slider({
     },
     Callback = function(value)
         ws = value
+    end
+})
+
+Tab1:Toggle({
+    Title = "Fly",
+    Value = false,
+    Callback = function(state)
+        if state then
+            startFlying()
+        else
+            stopFlying()
+        end
+    end
+})
+
+Tab1:Slider({
+    Title = "Fly Speed",
+    Value = {
+        Min = 10,
+        Max = 200,
+        Default = 60
+    },
+    Callback = function(value)
+        flySpeed = value
+    end
+})
+
+Tab1:Toggle({
+    Title = "Noclip",
+    Value = false,
+    Callback = function(state)
+        if state then
+            enableNoclip()
+        else
+            disableNoclip()
+        end
+    end
+})
+
+Tab1:Toggle({
+    Title = "Infinite Jump",
+    Value = false,
+    Callback = function(state)
+        if state then
+            enableInfiniteJump()
+        else
+            disableInfiniteJump()
+        end
     end
 })
 
