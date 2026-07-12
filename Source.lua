@@ -2,12 +2,11 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local RunService = game:GetService("RunService")
 
 local Window = WindUI:CreateWindow({
-    Title = "Universal", -- window title
-    Author = "By KermetDevelopment", -- window subtitle. optional
-
-    User = { -- user information located at the bottom left
-        Enabled = true, -- can be toggled with Window.User:Enable() or Window.User:Disable()
-        Anonymous = false, -- can be toggled with Window.User:SetAnonymous(true) --(true or false)
+    Title = "Universal",
+    Author = "By KermetDevelopment",
+    User = {
+        Enabled = true,
+        Anonymous = false,
     },
 })
 
@@ -21,7 +20,6 @@ local NameToggle = false
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -82,14 +80,12 @@ local function updateNameESP(player)
     end
 end
 
--- Main Loop
 RunService.RenderStepped:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         updateNameESP(player)
     end
 end)
 
--- Cleanup
 Players.PlayerRemoving:Connect(function(plr)
     if NameCache[plr] then
         NameCache[plr]:Remove()
@@ -102,12 +98,6 @@ local Settings = {
     Thickness = 2,
     Transparency = 1,
 }
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-
-local LocalPlayer = Players.LocalPlayer
 
 local SkeletonCache = {}
 
@@ -142,7 +132,12 @@ local function updateSkeleton(player)
     end
 
     local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return end
+    if not humanoid or humanoid.Health <= 0 then
+        if SkeletonCache[player] then
+            for _, line in ipairs(SkeletonCache[player]) do line.Visible = false end
+        end
+        return
+    end
 
     if not SkeletonCache[player] then
         SkeletonCache[player] = createSkeleton()
@@ -162,7 +157,7 @@ local function updateSkeleton(player)
         line.From = Vector2.new(v1.X, v1.Y)
         line.To = Vector2.new(v2.X, v2.Y)
         line.Visible = true
-        index += 1
+        index = index + 1
     end
 
     local head   = character:FindFirstChild("Head")
@@ -220,18 +215,18 @@ local wse = false
 local ws = 16
 
 RunService.RenderStepped:Connect(function(dt)
-if wse then
-game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = ws      
+    if wse and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = ws
     end
-    end)
+end)
 
 local Toggle1 = Tab1:Toggle({
     Title = "WalkSpeed",
     Callback = function(state)
-wse = state
-      if not state then
-game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
-      end
+        wse = state
+        if not state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        end
     end
 })
 
@@ -250,25 +245,22 @@ local Slider1 = Tab1:Slider({
 local Toggle2 = Tab2:Toggle({
     Title = "Master ESP",
     Callback = function(state)
-MasterToggle = state
+        MasterToggle = state
     end
 })
 
 Tab2:Toggle({
     Title = "Name Esp",
-    Type = "Checkbox",
     Value = false,
     Callback = function(state)
-NameToggle = value
+        NameToggle = state
     end
 })
 
 Tab2:Toggle({
     Title = "Skeleton Esp",
-    Type = "Checkbox",
     Value = false,
     Callback = function(state)
-SkeletonToggle = value
+        SkeletonToggle = state
     end
 })
-
